@@ -2,17 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define PLUSONE(l) (l > 'z' ? 'a' : l+1)
-
-const char StartStr[]="cqjxjnds";
+const char StartStr[9]="cqjxjnds";
 int NumPasswords=2;
 
 void incstr(char *str) {
 	size_t l;
 
-	for(l=7;l>=0;l++) {
-		str[l]=PLUSONE(str[l]);
-		if(str[l] != 'a') {
+	for(l=7;l>=0;l--) {
+		if(str[l]++ == 'z') {
+			str[l] = 'a';
+		} else {
 			return;
 		}
 	}
@@ -40,8 +39,8 @@ int validate(char *str) {
 	}
 
 	for(l=0;l<6;l++) {
-		if(	str[l+1] == PLUSONE(str[l])
-		    &&	str[l+2] == PLUSONE(str[l+1])
+		if(	str[l+1] == str[l]+1
+		     && str[l+2] == str[l]+2
 		) {
 			return 1;
 		}
