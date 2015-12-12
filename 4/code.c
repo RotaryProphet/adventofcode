@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <openssl/md5.h>
-const char input[]="yzbqklnj";
 
+const char input[]="yzbqklnj";
 
 void str2md5(const char *str, size_t length, char *dest, size_t dest_len) {
 	int n;
@@ -37,12 +37,21 @@ int main(int argc, char *argv[]) {
 	char inbuf[256];
 	char outbuf[33];
 	unsigned int i;
+	int found1=0;
+	int found2=0;
 
 	for(i=0;i < (unsigned int)-1;i++) {
 		snprintf(inbuf, sizeof(inbuf), "%s%u", input, i);
 		str2md5(inbuf, strlen(inbuf), outbuf, sizeof(outbuf));	
-		if(!strncmp(outbuf, "000000", 6)) {
-			printf("Input '%s' yields md5 '%s': %u\n", inbuf, outbuf, i);
+		if(!found1 && !strncmp(outbuf, "00000", 5)) {
+			printf("Day1: Input '%s' yields md5 '%s': %u\n", inbuf, outbuf, i);
+			found1=1;
+		}
+		if(!found2 && !strncmp(outbuf, "000000", 6)) {
+			printf("Day2: Input '%s' yields md5 '%s': %u\n", inbuf, outbuf, i);
+			found2=1;
+		}
+		if(found1 && found2) {
 			break;
 		}
 	}
