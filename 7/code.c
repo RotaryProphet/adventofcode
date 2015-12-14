@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+char *strdup(const char *s);
+
 typedef enum _Ops {
 	SET,
 	AND,

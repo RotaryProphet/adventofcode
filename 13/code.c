@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
 	printf("Day 1 Best happiness is %i\n", BestH);
 	BestH=0;
 
-	strcpy(&Working[NumNames++], "Me");
+	strcpy(Working[NumNames++].Name, "Me");
 	for(i=0;i<20000;i++) {
 		NameList Tmp;
                 int swap1 = rand() % NumNames;

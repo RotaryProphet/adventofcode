@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+size_t strnlen(const char *c, size_t len);
+
 char invalids[][3]={ "ab", "cd", "pq", "xy" ,"" };
 
 int main(int argc, char *argv[]) {
