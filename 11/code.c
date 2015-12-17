@@ -6,7 +6,7 @@ const char StartStr[9]="cqjxjnds";
 int NumPasswords=2;
 
 void incstr(char *str) {
-	size_t l;
+	int l;
 
 	for(l=7;l>=0;l--) {
 		if(str[l]++ == 'z') {
