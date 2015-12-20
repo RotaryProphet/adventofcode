@@ -2,3 +2,4 @@
 code.dSYM
 *.swp
 core.*
+*.exe
