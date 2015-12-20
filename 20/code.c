@@ -3,25 +3,43 @@
 #include <string.h>
 #include <stdint.h>
 
-const int target=29000000;
-int main() {
-	unsigned int house, elf;
-	int highest=0;
+#define MAX(a,b) (a > b ? a : b)
+#define MIN(a,b) (a < b ? a : b)
 
-	for(house=1;;house++) {
-		int presents=house * 10 + 10;
-		for(elf=2;elf<house/2;elf++) {
-			if(house % elf == 0) {
-				presents += elf * 10;
-			}
-		}
-		if(presents >= target) {
-			printf("House %i is over (%i)\n", house, presents);
-			break;
-		} else if(presents > highest) {
-			printf("New highest: %i @ %i\n", presents, house);
-			highest=presents;
+#define target 29000000
+int houses[target/10];
+
+int main() {
+	memset(houses, 0, sizeof(houses));
+	int i,j,s;
+	for(i=1;i<target/10;i++) {
+		for(j=i;j<target/10;j+=i) {
+			houses[j]+=i*10;
 		}
 	}
+
+	for(j=1;j<target/10;j++) {
+		if(houses[j] >= target) {
+			printf("Day 1: Found target at house %i (%i)\n", j, houses[j]);
+			break;
+		}
+	}
+
+	memset(houses, 0, sizeof(houses));
+	for(i=1;i<target/10;i++) {
+		for(j=i, s=0; s<50 && j<target/10;j+=i, s++) {
+			houses[j]+=i*11;
+			//printf("Elf %i delivering to house %i (%i)\n", i, j, houses[j]);
+		}
+	}
+
+	for(j=1;j<target/10;j++) {
+		if(houses[j] >= target) {
+			printf("Day 2: Found target at house %i (%i)\n", j, houses[j]);
+			break;
+		}
+	}
+
+		
 	return 0;
 }
