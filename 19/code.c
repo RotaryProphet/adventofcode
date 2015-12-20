@@ -92,7 +92,9 @@ int Day2Iter(const char *from, const char *tgt, int Iter) {
 int Day2Calc(const char *from) {
 	// Sort conditions in greedy order (Most replaced chars first)
 	qsort(R, NumR, sizeof(*R), SortRep);
-	return Day2Iter(from, "e", 1);
+	//return Day2Iter(from, "e", 1);
+	/* Brute force method takes forever, and gives same answer! */
+	return -1;
 }
 		
 
