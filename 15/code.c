@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
 			bestcal=ttot;
 		}
 nextloop:
-		1;
+		continue;
 	}
 done:	
 	printf("Best total is %i\n", besttot);

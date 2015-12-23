@@ -14,15 +14,16 @@ int summ(json_object *obj) {
 	case json_type_object:
 	{
 		json_object_object_foreach(obj, key0, val0) {
+			/* Leave this here to remove the warning about unused key0 */
 			json_object *val;
 			json_object_object_get_ex(obj, key0, &val);
 			if(
-				json_object_get_type(val) == json_type_string
-			     && !strcmp(json_object_get_string(val), "red")
+				json_object_get_type(val0) == json_type_string
+			     && !strcmp(json_object_get_string(val0), "red")
 			) {
 				return 0;
 			}
-			r+=summ(val);
+			r+=summ(val0);
 		}
 		break;
 	}
