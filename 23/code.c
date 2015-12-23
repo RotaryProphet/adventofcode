@@ -24,7 +24,8 @@ typedef struct _Instruction {
 
 Instruction *Program=NULL;
 int NumInstructions=0;
-uint64_t Registers[2];
+
+unsigned int Registers[2];
 
 //#define DBG(...) printf(__VA_ARGS__)
 #define DBG(...)
@@ -34,7 +35,7 @@ void RunProgram() {
 	while(PC >= 0 && PC < NumInstructions) {
 		Instruction *This=&Program[PC];
 
-		DBG("PC=%i '%s' [%lu,%lu]->", PC, This->Orig, Registers[0], Registers[1]); 
+		DBG("PC=%i '%s' [%u,%u]->", PC, This->Orig, Registers[0], Registers[1]); 
 
 		switch(This->Type) {
 		case HALF:
@@ -71,7 +72,7 @@ void RunProgram() {
 			exit(1);
 			break;
 		}
-		DBG("PC=%i [%lu,%lu]\n", PC, Registers[0], Registers[1]);
+		DBG("PC=%i [%u,%u]\n", PC, Registers[0], Registers[1]);
 	}
 	printf("Exiting loop, PC=%i\n", PC);
 }
@@ -126,11 +127,11 @@ int main(int argc, char *argv[]) {
 	
 	memset(&Registers, 0, sizeof(Registers));	
 	RunProgram();
-	printf("Day 1: Value of 'b' is %lu\n", Registers[1]);
+	printf("Day 1: Value of 'b' is %u\n", Registers[1]);
 
 	Registers[0]=1;
 	Registers[1]=0;
 	RunProgram();
-	printf("Day 2: Value of 'b' is %lu\n", Registers[1]);
+	printf("Day 2: Value of 'b' is %u\n", Registers[1]);
 	return 0;
 }
