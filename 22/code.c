@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+char *strdup(const char *);
+
 #define MIN(a,b) (a < b ? a : b)
 #define MAX(a,b) (a > b ? a : b)
 //#define DBG(...) printf(__VA_ARGS__)
@@ -48,6 +50,7 @@ typedef struct _Round {
 	int		ManaSpent;
 	Effect		Effects[NUMSPELLS];
 	int		RoundNum;
+	int		HardMode;
 	DebugLog	Log;
 } Round;
 
@@ -68,9 +71,9 @@ void Debug(Round *R, const char *fmt, ...) {
 	va_start(args, fmt);
 
 	if(!R->Log.Log) {
-		R->Log.Log = malloc(4096);
+		R->Log.Log = malloc(40960);
 		R->Log.LogPos=0;
-		R->Log.LogMax=4096;
+		R->Log.LogMax=40960;
 	}
 
 	for(;;) {
@@ -81,6 +84,7 @@ void Debug(Round *R, const char *fmt, ...) {
 				fprintf(stderr, "Error reallocing log\n");
 				exit(1);
 			}
+			printf("Enlarged buffer to %lu\n", R->Log.LogMax + 4096);
 			R->Log.LogMax+=4096;
 		} else {
 			R->Log.LogPos+=len;
@@ -168,6 +172,14 @@ void RunRound(Round *R) {
 	Debug(R, "%i.1: %i(%i) vs %i: ", R->RoundNum, R->Chars[0].hp, R->Chars[0].mana,
 		R->Chars[1].hp);
 
+	if(R->HardMode) {
+		R->Chars[0].hp--;
+		Debug(R, "Hard mode, 1 damage to player (%i)\n", R->Chars[0].hp);
+		if(R->Chars[0].hp <= 0) {
+			return;
+		}
+	}
+
 	//if(LowestManaWin > 0 && R->ManaSpent >= LowestManaWin) {
 		//continue;
 	//}
@@ -175,12 +187,12 @@ void RunRound(Round *R) {
 	DoEffects(R);
 	if(R->Chars[1].hp <= 0) {
 		Won(R);
-		free(R->Log.Log);
 		return;
 	}
 	for(i=0;i<sizeof(Spellbook)/sizeof(Spellbook[0]);i++) {
-		Round New;
+		Round *New;
 		Spell *S=&Spellbook[i];
+		int d;
 		if(EffectActive(R, S)) {
 			continue;
 		} else if(S->cost > R->Chars[0].mana) {
@@ -191,46 +203,67 @@ void RunRound(Round *R) {
 			continue;
 		}
 
+		New=malloc(sizeof(*New));
 		
-		memcpy(&New, R, sizeof(New));
-		memset(&New.Log, 0, sizeof(New.Log));
-		Debug(&New, R->Log.Log); // Copy logs to new round
-		Debug(&New, "Casting spell %s costs %i mana (%i)\n", S->Name, S->cost,
-			New.Chars[0].mana-S->cost);
-		AddEffect(&New, S);
-		New.Chars[0].mana-=S->cost;
-		New.ManaSpent+=S->cost;
-		Debug(&New, "Total mana spent: %i\n", New.ManaSpent);
+		memcpy(New, R, sizeof(*New));
+		New->Log.Log = malloc(R->Log.LogMax);
+		memcpy(New->Log.Log, R->Log.Log, R->Log.LogMax);
+		//Debug(&New, R->Log.Log); // Copy logs to new round
+		
+		New->Chars[0].mana-=S->cost;
+		Debug(New, "Casting spell %s costs %i mana (%i)\n", S->Name, S->cost,
+			New->Chars[0].mana);
+		AddEffect(New, S);
+		New->ManaSpent+=S->cost;
+		Debug(New, "Total mana spent: %i\n", New->ManaSpent);
 
-		Debug(&New, "%i.2: %i(%i) vs %i: ", New.RoundNum, New.Chars[0].hp,
-			New.Chars[0].mana, New.Chars[0].hp);
+		Debug(New, "%i.2: %i(%i) vs %i: ", New->RoundNum, New->Chars[0].hp,
+			New->Chars[0].mana, New->Chars[0].hp);
 		
-		DoEffects(&New);
-		if(New.Chars[1].hp <= 0) {
-			Won(R);
-			free(New.Log.Log);
+		DoEffects(New);
+		if(New->Chars[1].hp <= 0) {
+			Won(New);
+			free(New->Log.Log);
+			free(New);
 			continue;
 		}
-	
-		New.Chars[0].hp -= New.Chars[1].dmg - New.Chars[0].armor;
-		if(New.Chars[0].hp <= 0) {
-			free(New.Log.Log);
+
+		d = MAX(1, New->Chars[1].dmg - New->Chars[0].armor);
+		New->Chars[0].hp -= d;
+		Debug(New, "Boss hit player for %i damage (%i)\n", d, New->Chars[0].hp);
+		if(New->Chars[0].hp <= 0) {
+			free(New->Log.Log);
+			free(New);
 			continue;
 		}
-		RunRound(&New);
-		//free(New.Log.Log);
+		RunRound(New);
+		free(New->Log.Log);
+		free(New);
 	}
-	free(R->Log.Log);
 }
 
 int main(int argc, char *argv[]) {
-	Round R;
+	Round *R=malloc(sizeof(*R));
 
-	memset(&R, 0, sizeof(R));
-	memcpy(&R.Chars[0], &Starting, sizeof(Starting));
-	memcpy(&R.Chars[1], &Boss, sizeof(Boss));
+	memset(R, 0, sizeof(*R));
+	memcpy(&R->Chars[0], &Starting, sizeof(Starting));
+	memcpy(&R->Chars[1], &Boss, sizeof(Boss));
 
-	RunRound(&R);
-	printf("Lowest mana win: %i\n", LowestManaWin);		
+	RunRound(R);
+	free(R->Log.Log);
+	//printf(LowestLog);
+	printf("Day 1 Lowest mana win: %i\n", LowestManaWin);	
+
+	LowestManaWin=-1;
+	memset(R, 0, sizeof(*R));
+	memcpy(&R->Chars[0], &Starting, sizeof(Starting));
+	memcpy(&R->Chars[1], &Boss, sizeof(Boss));
+	R->HardMode=1;
+	RunRound(R);
+	free(R->Log.Log);
+	//printf(LowestLog);
+	printf("Day 2 Lowest mana win: %i\n", LowestManaWin);	
+
+	free(R);
 }
 
