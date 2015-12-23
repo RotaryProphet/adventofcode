@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 #define MIN(a,b) (a < b ? a : b)
 #define MAX(a,b) (a > b ? a : b)
@@ -12,7 +13,7 @@
 #define NUMROUNDS 100
 
 int LowestManaWin = -1;
-
+char *LowestLog = NULL;
 typedef struct _Character {
 	int	hp;
 	int	dmg;
@@ -35,15 +36,19 @@ typedef struct _Effect {
 	int		Rounds;
 } Effect;
 
-typedef struct _SpellStack {
-	Spell			*S[NUMROUNDS];
-} SpellStack;
+typedef struct _DebugLog {
+	char		*Log;
+	size_t		LogPos;
+	size_t		LogMax;
+} DebugLog;
+
 
 typedef struct _Round {
 	Character	Chars[NUMPLAYERS];
 	int		ManaSpent;
 	Effect		Effects[NUMSPELLS];
 	int		RoundNum;
+	DebugLog	Log;
 } Round;
 
 Character Boss={71,10,0,0};
@@ -56,6 +61,45 @@ Spell Spellbook[NUMSPELLS]={
 	{"Poison",		173,	0,	3,	0,	0,	6},
 	{"Recharge",		229,	0,	0,	0,	101,	5},
 };
+
+void Debug(Round *R, const char *fmt, ...) {
+	size_t len;
+	va_list args;
+	va_start(args, fmt);
+
+	if(!R->Log.Log) {
+		R->Log.Log = malloc(4096);
+		R->Log.LogPos=0;
+		R->Log.LogMax=4096;
+	}
+
+	for(;;) {
+		len = vsnprintf(&(R->Log.Log[R->Log.LogPos]), R->Log.LogMax - R->Log.LogPos,
+				fmt, args);
+		if(R->Log.LogPos + len >= R->Log.LogMax) {
+			if(!(R->Log.Log = realloc(R->Log.Log, R->Log.LogMax + 4096))) {
+				fprintf(stderr, "Error reallocing log\n");
+				exit(1);
+			}
+			R->Log.LogMax+=4096;
+		} else {
+			R->Log.LogPos+=len;
+			return;
+		}
+	}
+}
+
+void Won(Round *R) {
+	if(LowestManaWin <= 0 || R->ManaSpent < LowestManaWin) {
+		printf("New lowest win: %i\n", R->ManaSpent);
+		Debug(R, "Won\n");
+		if(LowestLog) {
+			free(LowestLog);
+		}
+		LowestLog=strdup(R->Log.Log);
+		LowestManaWin = R->ManaSpent;
+	}
+}
 
 int EffectActive(Round *R, Spell *S) {
 	int i;
@@ -77,42 +121,52 @@ Effect *AddEffect(Round *R, Spell *S) {
 			return &R->Effects[i];
 		}
 	}
+	fprintf(stderr, "Unable to find empty Effect position!\n");
+	exit(1);
 	return NULL;
 }
 
 void DoEffects(Round *R) {
-	Effect *E;
 	R->Chars[0].armor=0;
 	int i;
 	for(i=0;i<NUMSPELLS;i++) {
-		E=&R->Effects[i];
+		Effect *E=&R->Effects[i];
 		if(E->Rounds > 0) {
-			R->Chars[1].hp -= E->S.dmg;
-			R->Chars[0].hp = MIN(R->Chars[0].hp + E->S.hp, Starting.hp);
-			R->Chars[0].armor += E->S.armor;
-			R->Chars[0].mana += E->S.mana;
+			if(E->S.dmg) {
+				R->Chars[1].hp -= E->S.dmg;
+				Debug(R, "%s did %i dmg to boss (%i)\n", E->S.Name,
+					E->S.dmg, R->Chars[1].hp);
+			}
+			if(E->S.hp) {
+				int h=MIN(Starting.hp - R->Chars[0].hp, E->S.hp);
+				R->Chars[0].hp += h;
+				Debug(R, "%s healed %i hp (%i)\n", E->S.Name, h, R->Chars[0].hp);
+			}
+			if(E->S.armor) {
+				R->Chars[0].armor += E->S.armor;
+				Debug(R, "%s armor increased by %i (%i)\n", E->S.Name, E->S.armor,
+					R->Chars[0].armor);
+			}
+			if(E->S.mana) {
+				R->Chars[0].mana += E->S.mana;
+				Debug(R, "%s increased mana by %i (%i)\n", E->S.Name, E->S.mana,
+					R->Chars[0].mana);
+			}
 			E->Rounds--;
+			Debug(R, "%s has %i rounds left\n", E->S.Name, E->Rounds);
 		}
 	}
 }
 
-void PrintSpellStack(SpellStack *S, int Num) {
-	int i;
-	DBG("Spell stack (%i): ", Num);
-	for(i=1;i<=Num;i+=Num) {
-		DBG("%s,", S->S[i]->Name);
-	}
-	DBG("\n");
-}
-
-void RunRound(Round *R, SpellStack *Stack) {
+void RunRound(Round *R) {
 	int i;
 
 	if(++R->RoundNum > NUMROUNDS) {
 		DBG("Skipping round that took too long\n");
 		return;
 	}
-	DBG("%*s%i: %i(%i) vs %i: ", R->RoundNum*4, "", R->RoundNum, R->Chars[0].hp, R->Chars[0].mana, R->Chars[1].hp);
+	Debug(R, "%i.1: %i(%i) vs %i: ", R->RoundNum, R->Chars[0].hp, R->Chars[0].mana,
+		R->Chars[1].hp);
 
 	//if(LowestManaWin > 0 && R->ManaSpent >= LowestManaWin) {
 		//continue;
@@ -120,75 +174,63 @@ void RunRound(Round *R, SpellStack *Stack) {
 
 	DoEffects(R);
 	if(R->Chars[1].hp <= 0) {
-		if(LowestManaWin <= 0 || R->ManaSpent < LowestManaWin) {
-			printf("New lowest win: %i\n", R->ManaSpent);
-			LowestManaWin = R->ManaSpent;
-		} else {
-			DBG("Won, but not lowest\n");
-		}
+		Won(R);
+		free(R->Log.Log);
 		return;
 	}
-	if(R->Chars[0].mana < Spellbook[0].cost) {
-		DBG("Died\n");
-		return;
-	}
-	DBG("\n");
 	for(i=0;i<sizeof(Spellbook)/sizeof(Spellbook[0]);i++) {
 		Round New;
 		Spell *S=&Spellbook[i];
 		if(EffectActive(R, S)) {
-			DBG("%*sSkipping %s because already active\n", R->RoundNum * 4, "", S->Name);
 			continue;
 		} else if(S->cost > R->Chars[0].mana) {
-			DBG("%*sSkipping %s because not enough mana\n", R->RoundNum * 4, "", S->Name);
 			continue;
 		}
 
 		if(LowestManaWin > 0 && R->ManaSpent + S->cost >= LowestManaWin) {
-			DBG("%*sAlready over lowest\n", R->RoundNum * 4, "");
 			continue;
 		}
 
-		DBG("%*sCasting %s: ", R->RoundNum * 4, "", S->Name);
-		Stack->S[R->RoundNum]=S;
-
+		
 		memcpy(&New, R, sizeof(New));
+		memset(&New.Log, 0, sizeof(New.Log));
+		Debug(&New, R->Log.Log); // Copy logs to new round
+		Debug(&New, "Casting spell %s costs %i mana (%i)\n", S->Name, S->cost,
+			New.Chars[0].mana-S->cost);
 		AddEffect(&New, S);
 		New.Chars[0].mana-=S->cost;
 		New.ManaSpent+=S->cost;
+		Debug(&New, "Total mana spent: %i\n", New.ManaSpent);
+
+		Debug(&New, "%i.2: %i(%i) vs %i: ", New.RoundNum, New.Chars[0].hp,
+			New.Chars[0].mana, New.Chars[0].hp);
+		
 		DoEffects(&New);
 		if(New.Chars[1].hp <= 0) {
-			if(LowestManaWin <= 0 || R->ManaSpent < LowestManaWin) {
-				printf("New lowest win: %i\n", R->ManaSpent);
-				LowestManaWin = R->ManaSpent;
-				PrintSpellStack(Stack, R->RoundNum);
-			} else {
-				DBG("Won, but not lowest\n");
-			}
+			Won(R);
+			free(New.Log.Log);
 			continue;
 		}
 	
 		New.Chars[0].hp -= New.Chars[1].dmg - New.Chars[0].armor;
 		if(New.Chars[0].hp <= 0) {
-			DBG("Lost\n");
+			free(New.Log.Log);
 			continue;
 		}
-		DBG("\n");
-		RunRound(&New, Stack);
+		RunRound(&New);
+		//free(New.Log.Log);
 	}
+	free(R->Log.Log);
 }
 
 int main(int argc, char *argv[]) {
-	Round *R;
-	SpellStack Stack;
+	Round R;
 
-	R=malloc(sizeof(*R));
-	memset(R, 0, sizeof(*R));
-	memcpy(&R->Chars[0], &Starting, sizeof(Starting));
-	memcpy(&R->Chars[1], &Boss, sizeof(Boss));
-	memset(&Stack, 0, sizeof(Stack));
+	memset(&R, 0, sizeof(R));
+	memcpy(&R.Chars[0], &Starting, sizeof(Starting));
+	memcpy(&R.Chars[1], &Boss, sizeof(Boss));
 
-	RunRound(R, &Stack);
+	RunRound(&R);
 	printf("Lowest mana win: %i\n", LowestManaWin);		
 }
 
