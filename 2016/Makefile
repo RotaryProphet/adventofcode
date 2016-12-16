@@ -10,6 +10,9 @@ clean :
 5/code : 5/code.c
 	gcc $(CFLAGS) -o $@ $< -lssl -lcrypto
 
+14/code : 14/code.c
+	gcc $(CFLAGS) -o $@ $< -lssl -lcrypto
+
 %/code : %/code.c
 	gcc $(CFLAGS) -o $@ $<
 
