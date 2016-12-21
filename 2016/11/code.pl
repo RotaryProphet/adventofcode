@@ -43,6 +43,7 @@ for(my $i=0;$i<@queue;$i++) {
 		}
 	}
 }
+print "Lowest found was $found\n";
 
 sub MakeShared {
 	my $ref=shift(@_);
