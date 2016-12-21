@@ -13,6 +13,9 @@ clean :
 14/code : 14/code.c
 	gcc $(CFLAGS) -o $@ $< -lssl -lcrypto
 
+17/code : 17/code.c
+	gcc $(CFLAGS) -o $@ $< -lssl -lcrypto
+
 %/code : %/code.c
 	gcc $(CFLAGS) -o $@ $<
 
