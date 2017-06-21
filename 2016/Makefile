@@ -16,6 +16,9 @@ clean :
 17/code : 17/code.c
 	gcc $(CFLAGS) -o $@ $< -lssl -lcrypto
 
+25/code : 25/code.c
+	gcc -ggdb -std=gnu99 -o $@ $<
+
 %/code : %/code.c
 	gcc $(CFLAGS) -o $@ $<
 
